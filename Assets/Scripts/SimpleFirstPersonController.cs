@@ -7,6 +7,8 @@ public class SimpleFirstPersonController : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 2f;
     [SerializeField] private float gravity = -20f;
 
+    public float MovementSpeed => movementSpeed;
+
     private CharacterController characterController;
     [SerializeField] private Transform cameraTransform;
     private float cameraPitch;

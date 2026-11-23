@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 using System.Collections.Generic;
 
 public class EnemyController : MonoBehaviour
@@ -16,6 +17,7 @@ public class EnemyController : MonoBehaviour
     private readonly Dictionary<GameObject, int> enemySpawnIndices = new Dictionary<GameObject, int>();
     private readonly HashSet<int> occupiedSpawnIndices = new HashSet<int>();
     private Transform[] spawnPoints;
+    [SerializeField] private bool autoConfigureZombieAi = true;
     [SerializeField] private GameObject[] enemyPrefabs = new GameObject[0];
 
     private void Awake()
@@ -136,6 +138,7 @@ public class EnemyController : MonoBehaviour
         Quaternion spawnRotation = spawnPoint.rotation;
 
         GameObject spawnedEnemy = Instantiate(prefabToSpawn, spawnPosition, spawnRotation);
+        ConfigureZombieAi(spawnedEnemy);
         activeEnemies.Add(spawnedEnemy);
         enemySpawnIndices[spawnedEnemy] = spawnIndex;
         occupiedSpawnIndices.Add(spawnIndex);
@@ -192,5 +195,23 @@ public class EnemyController : MonoBehaviour
         }
 
         return position + Vector3.up * spawnHeightOffset;
+    }
+
+    private void ConfigureZombieAi(GameObject enemy)
+    {
+        if (!autoConfigureZombieAi)
+        {
+            return;
+        }
+
+        if (enemy.GetComponent<NavMeshAgent>() == null)
+        {
+            enemy.AddComponent<NavMeshAgent>();
+        }
+
+        if (enemy.GetComponent<ZombieAiController>() == null)
+        {
+            enemy.AddComponent<ZombieAiController>();
+        }
     }
 }

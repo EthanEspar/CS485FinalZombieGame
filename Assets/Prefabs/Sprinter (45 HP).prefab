@@ -13,10 +13,10 @@ GameObject:
   - component: {fileID: 7910416277889290867}
   - component: {fileID: 7134474827819451528}
   - component: {fileID: 2141952711133805546}
-  - component: {fileID: 949985390292559882}
+  - component: {fileID: 4072085281676388828}
   m_Layer: 0
   m_Name: Sprinter (45 HP)
-  m_TagString: zombie
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -133,7 +133,7 @@ MonoBehaviour:
   isBoss: 0
   displayName: Sprinter
   healthLabel: {fileID: 0}
---- !u!195 &949985390292559882
+--- !u!195 &4072085281676388828
 NavMeshAgent:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

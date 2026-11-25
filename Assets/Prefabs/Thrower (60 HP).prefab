@@ -13,10 +13,10 @@ GameObject:
   - component: {fileID: 8715869857195227976}
   - component: {fileID: 2223935274938132232}
   - component: {fileID: 6766013463685593130}
-  - component: {fileID: 7472383718894363530}
+  - component: {fileID: -6784839724554117919}
   m_Layer: 0
   m_Name: Thrower (60 HP)
-  m_TagString: zombie
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -133,7 +133,7 @@ MonoBehaviour:
   isBoss: 0
   displayName: Thrower
   healthLabel: {fileID: 0}
---- !u!195 &7472383718894363530
+--- !u!195 &-6784839724554117919
 NavMeshAgent:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

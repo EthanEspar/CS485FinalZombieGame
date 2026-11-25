@@ -1,15 +1,32 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class ZombieHealth : MonoBehaviour, ICardDamageable
 {
+    private static readonly HashSet<ZombieHealth> activeZombies =
+        new HashSet<ZombieHealth>();
+
     [SerializeField] private float maximumHealth = 50f;
     [SerializeField] private bool isBoss;
     [SerializeField] private string displayName = "Zombie";
 
     [SerializeField] private TextMesh healthLabel;
+    private Coroutine stunRoutine;
 
     public bool IsBoss => isBoss;
     public float CurrentHealth { get; private set; }
+    public static IReadOnlyCollection<ZombieHealth> ActiveZombies => activeZombies;
+
+    private void OnEnable()
+    {
+        activeZombies.Add(this);
+    }
+
+    private void OnDisable()
+    {
+        activeZombies.Remove(this);
+    }
 
     private void Awake()
     {
@@ -54,6 +71,53 @@ public class ZombieHealth : MonoBehaviour, ICardDamageable
         {
             Die();
         }
+    }
+
+    public void ApplyStun(float duration)
+    {
+        if (duration <= 0f)
+        {
+            return;
+        }
+
+        if (stunRoutine != null)
+        {
+            StopCoroutine(stunRoutine);
+        }
+
+        stunRoutine = StartCoroutine(StunCoroutine(duration));
+    }
+
+    public void ApplyKnockback(Vector3 direction, float distance)
+    {
+        direction.y = 0f;
+        if (direction.sqrMagnitude <= 0.001f || distance <= 0f)
+        {
+            return;
+        }
+
+        Vector3 movement = direction.normalized * distance;
+        transform.position += movement;
+    }
+
+    private IEnumerator StunCoroutine(float duration)
+    {
+        ZombieAiController aiController = GetComponent<ZombieAiController>();
+        bool aiWasEnabled = aiController != null && aiController.enabled;
+
+        if (aiWasEnabled)
+        {
+            aiController.enabled = false;
+        }
+
+        yield return new WaitForSeconds(duration);
+
+        if (aiController != null && aiWasEnabled)
+        {
+            aiController.enabled = true;
+        }
+
+        stunRoutine = null;
     }
 
     private void CreateHealthLabel()

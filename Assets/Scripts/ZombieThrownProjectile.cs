@@ -3,6 +3,7 @@ using UnityEngine;
 public class ZombieThrownProjectile : MonoBehaviour
 {
     [SerializeField] private float lifetimeSeconds = 6f;
+    [SerializeField] private float damage = 10f;
 
     private Transform owner;
 
@@ -18,6 +19,12 @@ public class ZombieThrownProjectile : MonoBehaviour
             (other.transform == owner || other.transform.IsChildOf(owner)))
         {
             return;
+        }
+
+        PlayerHealth playerHealth = other.GetComponentInParent<PlayerHealth>();
+        if (playerHealth != null)
+        {
+            playerHealth.TakeDamage(damage);
         }
 
         Destroy(gameObject);

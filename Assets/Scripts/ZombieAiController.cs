@@ -1,7 +1,5 @@
 using UnityEngine;
-using UnityEngine.AI;
 
-[RequireComponent(typeof(NavMeshAgent))]
 public class ZombieAiController : MonoBehaviour
 {
     private enum ZombieType
@@ -21,25 +19,41 @@ public class ZombieAiController : MonoBehaviour
     [SerializeField] private float throwCooldown = 1.5f;
     [SerializeField] private GameObject projectilePrefab;
 
-    private NavMeshAgent agent;
+    [Header("Walker and Sprinter Melee Damage")]
+    [SerializeField] private float meleeAttackRange = 2.1f;
+    [SerializeField] private float meleeAttackCooldown = 1f;
+    [SerializeField] private float walkerDamage = 8f;
+    [SerializeField] private float sprinterDamage = 12f;
+
     private SimpleFirstPersonController playerController;
+    private PlayerHealth playerHealth;
     private float nextThrowTime;
+    private float nextMeleeAttackTime;
 
     private void Awake()
     {
-        agent = GetComponent<NavMeshAgent>();
         ResolveTypeFromName();
     }
 
     private void Update()
     {
         ResolveTargetIfNeeded();
-        if (target == null || !agent.isOnNavMesh)
+        if (target == null)
+        {
+            return;
+        }
+
+        // Check melee range before moving so zombies stop and attack nearby players.
+        if (zombieType != ZombieType.Thrower && HandleMeleeAttack())
         {
             return;
         }
 
         float playerSpeed = GetPlayerSpeed();
+        float enemySpeedMultiplier = ModifierManager.Instance != null
+            ? ModifierManager.Instance.EnemySpeedMultiplier
+            : 1f;
+        playerSpeed *= enemySpeedMultiplier;
 
         if (zombieType == ZombieType.Thrower)
         {
@@ -47,11 +61,52 @@ public class ZombieAiController : MonoBehaviour
             return;
         }
 
-        agent.isStopped = false;
-        agent.speed = zombieType == ZombieType.Walker
+        float movementSpeed = zombieType == ZombieType.Walker
             ? playerSpeed * 0.5f
             : playerSpeed * 0.8f;
-        agent.SetDestination(target.position);
+        MoveTowardsTarget(movementSpeed);
+    }
+
+    private bool HandleMeleeAttack()
+    {
+        ResolvePlayerHealth();
+
+        Vector3 closestPlayerPoint = target.position;
+        CharacterController playerCollider = playerController != null
+            ? playerController.GetComponent<CharacterController>()
+            : null;
+
+        if (playerCollider != null)
+        {
+            closestPlayerPoint = playerCollider.ClosestPoint(transform.position);
+        }
+
+        Vector3 zombieCenter = transform.position + Vector3.up * 0.9f;
+        float distanceToTarget = Vector3.Distance(zombieCenter, closestPlayerPoint);
+
+        if (distanceToTarget > meleeAttackRange)
+        {
+            return false;
+        }
+
+        FaceTarget();
+
+        if (Time.time < nextMeleeAttackTime)
+        {
+            return true;
+        }
+
+        if (playerHealth != null)
+        {
+            float damage = zombieType == ZombieType.Sprinter
+                ? sprinterDamage
+                : walkerDamage;
+            playerHealth.TakeDamage(damage);
+            Debug.Log(gameObject.name + " dealt " + damage + " melee damage.");
+        }
+
+        nextMeleeAttackTime = Time.time + meleeAttackCooldown;
+        return true;
     }
 
     private void HandleThrower(float playerSpeed)
@@ -60,13 +115,10 @@ public class ZombieAiController : MonoBehaviour
 
         if (distanceToTarget > throwRange)
         {
-            agent.isStopped = false;
-            agent.speed = playerSpeed * 0.8f;
-            agent.SetDestination(target.position);
+            MoveTowardsTarget(playerSpeed * 0.8f);
             return;
         }
 
-        agent.isStopped = true;
         FaceTarget();
 
         if (Time.time >= nextThrowTime)
@@ -135,13 +187,46 @@ public class ZombieAiController : MonoBehaviour
                 playerController = target.GetComponent<SimpleFirstPersonController>();
             }
 
+            ResolvePlayerHealth();
+
             return;
         }
 
-        playerController = FindObjectOfType<SimpleFirstPersonController>();
+        playerController = FindAnyObjectByType<SimpleFirstPersonController>();
         if (playerController != null)
         {
             target = playerController.transform;
+            ResolvePlayerHealth();
+        }
+    }
+
+    private void ResolvePlayerHealth()
+    {
+        if (playerHealth != null)
+        {
+            return;
+        }
+
+        if (playerController != null)
+        {
+            playerHealth = playerController.GetComponent<PlayerHealth>();
+        }
+
+        if (playerHealth == null && target != null)
+        {
+            playerHealth = target.GetComponentInParent<PlayerHealth>();
+        }
+
+        if (playerHealth == null)
+        {
+            playerHealth = FindAnyObjectByType<PlayerHealth>();
+        }
+
+        // This fallback keeps melee damage functional in scenes that were
+        // created before PlayerHealth was added to the project.
+        if (playerHealth == null && playerController != null)
+        {
+            playerHealth = playerController.gameObject.AddComponent<PlayerHealth>();
         }
     }
 
@@ -187,5 +272,20 @@ public class ZombieAiController : MonoBehaviour
             transform.rotation,
             Quaternion.LookRotation(lookDirection.normalized),
             Time.deltaTime * 8f);
+    }
+
+    private void MoveTowardsTarget(float movementSpeed)
+    {
+        Vector3 direction = target.position - transform.position;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude <= 0.0001f)
+        {
+            return;
+        }
+
+        Vector3 movement = direction.normalized * movementSpeed * Time.deltaTime;
+        transform.position += movement;
+        FaceTarget();
     }
 }

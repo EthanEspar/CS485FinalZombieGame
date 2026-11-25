@@ -132,10 +132,10 @@ GameObject:
   - component: {fileID: 6020597787428351080}
   - component: {fileID: 3174470888136157750}
   - component: {fileID: 2105336602441273246}
-  - component: {fileID: 6087700406212779941}
+  - component: {fileID: 7748082595272197719}
   m_Layer: 0
   m_Name: Walker (30 HP)
-  m_TagString: zombie
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -252,7 +252,7 @@ MonoBehaviour:
   isBoss: 0
   displayName: Walker
   healthLabel: {fileID: 0}
---- !u!195 &6087700406212779941
+--- !u!195 &7748082595272197719
 NavMeshAgent:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

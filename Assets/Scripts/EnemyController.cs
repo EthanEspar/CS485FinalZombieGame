@@ -1,11 +1,9 @@
 using UnityEngine;
-using UnityEngine.AI;
 using System.Collections.Generic;
 
 public class EnemyController : MonoBehaviour
 {
     [SerializeField] private GameObject enemyPrefab;
-    [SerializeField] private string enemyTag = "zombie";
     [SerializeField] private string enemyPrefabFolderPath = "Assets/Prefabs";
     [SerializeField] private int maxAliveEnemies = 5;
     [SerializeField] private float respawnDelaySeconds = 5f;
@@ -19,6 +17,11 @@ public class EnemyController : MonoBehaviour
     private Transform[] spawnPoints;
     [SerializeField] private bool autoConfigureZombieAi = true;
     [SerializeField] private GameObject[] enemyPrefabs = new GameObject[0];
+
+    public GameObject[] EnemyPrefabs => enemyPrefabs;
+    public string SpawnPointTag => spawnPointTag;
+    public float SpawnHeightOffset => spawnHeightOffset;
+    public int MaxAliveEnemies => maxAliveEnemies;
 
     private void Awake()
     {
@@ -50,19 +53,19 @@ public class EnemyController : MonoBehaviour
         }
 
         string[] prefabGuids = UnityEditor.AssetDatabase.FindAssets("t:Prefab", new[] { enemyPrefabFolderPath });
-        List<GameObject> taggedPrefabs = new List<GameObject>();
+        List<GameObject> zombiePrefabs = new List<GameObject>();
 
         for (int i = 0; i < prefabGuids.Length; i++)
         {
             string assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(prefabGuids[i]);
             GameObject prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
-            if (prefab != null && prefab.CompareTag(enemyTag))
+            if (prefab != null && prefab.GetComponent<ZombieHealth>() != null)
             {
-                taggedPrefabs.Add(prefab);
+                zombiePrefabs.Add(prefab);
             }
         }
 
-        enemyPrefabs = taggedPrefabs.ToArray();
+        enemyPrefabs = zombiePrefabs.ToArray();
     }
 #endif
 
@@ -202,11 +205,6 @@ public class EnemyController : MonoBehaviour
         if (!autoConfigureZombieAi)
         {
             return;
-        }
-
-        if (enemy.GetComponent<NavMeshAgent>() == null)
-        {
-            enemy.AddComponent<NavMeshAgent>();
         }
 
         if (enemy.GetComponent<ZombieAiController>() == null)

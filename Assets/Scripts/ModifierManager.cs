@@ -15,15 +15,15 @@ public class ModifierManager : MonoBehaviour
     [SerializeField] private int spadePierceCount = 1;
 
     [Header("Mechanic Settings")]
-    [SerializeField] private float homingRange = 18f;
-    [SerializeField] private float homingStrength = 10f;
-    [SerializeField] private float explosionRadius = 3f;
-    [SerializeField] private float explosionDamageFraction = 0.5f;
-    [SerializeField] private float returnDelay = 0.75f;
-    [SerializeField] private int maximumSuitStreak = 5;
-    [SerializeField] private float suitStreakDamagePerCard = 0.15f;
-    [SerializeField, Range(0f, 1f)] private float cursedCooldownChance = 0.20f;
-    [SerializeField] private float cursedCooldownPenalty = 1.5f;
+    [SerializeField] private float homingRange = 40f;
+    [SerializeField] private float homingStrength = 20f;
+    [SerializeField] private float explosionRadius = 4.5f;
+    [SerializeField] private float explosionDamageFraction = 0.75f;
+    [SerializeField] private float returnDelay = 0.45f;
+    [SerializeField] private int maximumSuitStreak = 6;
+    [SerializeField] private float suitStreakDamagePerCard = 0.10f;
+    [SerializeField] private int cursedThrowInterval = 4;
+    [SerializeField] private float cursedCooldownPenalty = 1.8f;
 
     [Header("Available Round Rewards")]
     [SerializeField] private List<ModifierData> modifierPool = new List<ModifierData>();
@@ -38,6 +38,7 @@ public class ModifierManager : MonoBehaviour
         new Dictionary<ThrowingCard.Suit, SuitEffect>();
 
     private SimpleFirstPersonController playerController;
+    private int cursedThrowCounter;
 
     public float DamageMultiplier { get; private set; } = 1f;
     public float ThrowCooldownMultiplier { get; private set; } = 1f;
@@ -69,8 +70,8 @@ public class ModifierManager : MonoBehaviour
     public float JokerHealthFraction => UsesJokersBargain ? 0.75f : 0.5f;
     public int ExtraCardsPerThrow => UsesDoubleThrow ? 1 : 0;
     public int GlobalPierceCount => UsesGlobalPiercing ? 2 : 0;
-    public int RicochetCount => UsesRicochet ? 2 : 0;
-    public float MultiCardDamageMultiplier => UsesDoubleThrow ? 0.60f : 1f;
+    public int RicochetCount => UsesRicochet ? 3 : 0;
+    public float MultiCardDamageMultiplier => UsesDoubleThrow ? 0.70f : 1f;
     public float SuitStreakDamagePerCard => suitStreakDamagePerCard;
     public int MaximumSuitStreak => maximumSuitStreak;
 
@@ -148,9 +149,9 @@ public class ModifierManager : MonoBehaviour
                 break;
 
             case ModifierType.HeavyCards:
-                DamageMultiplier *= 1.35f;
-                ThrowForceMultiplier *= 0.65f;
-                KnockbackMultiplier *= 1.5f;
+                DamageMultiplier *= 1.40f;
+                ThrowForceMultiplier *= 0.80f;
+                KnockbackMultiplier *= 1.75f;
                 break;
 
             case ModifierType.HighVelocity:
@@ -164,8 +165,8 @@ public class ModifierManager : MonoBehaviour
                 break;
 
             case ModifierType.CarefulAim:
-                BonusCriticalChance += 0.25f;
-                ThrowCooldownMultiplier *= 1.25f;
+                BonusCriticalChance += 0.50f;
+                ThrowCooldownMultiplier *= 1.20f;
                 break;
 
             case ModifierType.WildDamage:
@@ -174,7 +175,7 @@ public class ModifierManager : MonoBehaviour
 
             case ModifierType.HomingCards:
                 UsesHoming = true;
-                DamageMultiplier *= 0.80f;
+                DamageMultiplier *= 0.90f;
                 break;
 
             case ModifierType.DoubleThrow:
@@ -183,7 +184,7 @@ public class ModifierManager : MonoBehaviour
 
             case ModifierType.PiercingCards:
                 UsesGlobalPiercing = true;
-                DamageMultiplier *= 0.80f;
+                DamageMultiplier *= 0.90f;
                 break;
 
             case ModifierType.Ricochet:
@@ -192,7 +193,7 @@ public class ModifierManager : MonoBehaviour
 
             case ModifierType.ExplosiveFaceCards:
                 UsesExplosiveFaceCards = true;
-                ThrowCooldownMultiplier *= 1.25f;
+                ThrowCooldownMultiplier *= 1.15f;
                 break;
 
             case ModifierType.ReturningCards:
@@ -232,7 +233,9 @@ public class ModifierManager : MonoBehaviour
 
         if (UsesWildDamage)
         {
-            result *= Random.Range(0.5f, 2f);
+            float wildMultiplier = Random.Range(0.50f, 2.25f);
+            result *= wildMultiplier;
+            Debug.Log("Wild Damage multiplier: x" + wildMultiplier.ToString("0.00"));
         }
 
         return Mathf.Max(0f, result);
@@ -242,9 +245,15 @@ public class ModifierManager : MonoBehaviour
     {
         float cooldown = baseCooldown * ThrowCooldownMultiplier;
 
-        if (UsesCursedDeck && Random.value <= cursedCooldownChance)
+        if (UsesCursedDeck)
         {
-            cooldown *= cursedCooldownPenalty;
+            cursedThrowCounter++;
+            int interval = Mathf.Max(2, cursedThrowInterval);
+            if (cursedThrowCounter % interval == 0)
+            {
+                cooldown *= cursedCooldownPenalty;
+                Debug.Log("Cursed Deck slowed this throw.");
+            }
         }
 
         return Mathf.Max(0.03f, cooldown);
@@ -295,6 +304,15 @@ public class ModifierManager : MonoBehaviour
         {
             ShuffleSuitEffects();
             Debug.Log("Chaos Deck shuffled the suit abilities.");
+        }
+    }
+
+    public void OnRoundStarted()
+    {
+        if (UsesChaosDeck)
+        {
+            ShuffleSuitEffects();
+            Debug.Log("Chaos Deck reassigned the suit powers for this round.");
         }
     }
 
@@ -355,20 +373,20 @@ public class ModifierManager : MonoBehaviour
         {
             new ModifierData(ModifierType.HeavyHand, "Heavy Hand", "+50% damage, but -25% movement speed.", true),
             new ModifierData(ModifierType.RapidDeal, "Rapid Deal", "Throw 40% faster, but deal 25% less damage.", true),
-            new ModifierData(ModifierType.HeavyCards, "Heavy Cards", "+35% damage and more knockback, but slower cards.", true),
+            new ModifierData(ModifierType.HeavyCards, "Heavy Cards", "+40% damage and strong knockback, but cards travel 20% slower.", true),
             new ModifierData(ModifierType.HighVelocity, "High Velocity", "Cards travel 50% faster, but cooldown is 25% longer.", true),
             new ModifierData(ModifierType.GlassCannon, "Glass Cannon", "Double damage, but zombies move 25% faster.", true),
-            new ModifierData(ModifierType.CarefulAim, "Careful Aim", "+25% critical chance, but cooldown is 25% longer.", true),
-            new ModifierData(ModifierType.WildDamage, "Wild Damage", "Every card deals between 50% and 200% damage.", false),
-            new ModifierData(ModifierType.HomingCards, "Homing Cards", "Cards track zombies, but deal 20% less damage.", false),
-            new ModifierData(ModifierType.DoubleThrow, "Double Throw", "Throw two cards at once; each deals 60% damage.", false),
-            new ModifierData(ModifierType.PiercingCards, "Piercing Deck", "All cards pierce two extra targets, but deal 20% less damage.", false),
-            new ModifierData(ModifierType.Ricochet, "Ricochet", "Cards bounce to two nearby zombies.", false),
-            new ModifierData(ModifierType.ExplosiveFaceCards, "Royal Explosion", "Face cards explode; throw cooldown is 25% longer.", false),
-            new ModifierData(ModifierType.ReturningCards, "Returning Cards", "Cards fly back toward the player after being thrown.", false),
-            new ModifierData(ModifierType.SuitStreak, "Suit Streak", "Repeated suits gain stacking damage.", false),
-            new ModifierData(ModifierType.ChaosDeck, "Chaos Deck", "Suit abilities are randomized after every shuffle.", false),
-            new ModifierData(ModifierType.CursedDeck, "Cursed Deck", "+40% damage, but some throws have a longer cooldown.", false),
+            new ModifierData(ModifierType.CarefulAim, "Careful Aim", "+50% critical chance, but cooldown is 20% longer.", true),
+            new ModifierData(ModifierType.WildDamage, "Wild Damage", "Every normal card deals between 50% and 225% damage.", false),
+            new ModifierData(ModifierType.HomingCards, "Homing Cards", "Cards strongly track zombies across the arena, but deal 10% less damage.", false),
+            new ModifierData(ModifierType.DoubleThrow, "Double Throw", "Throw two cards at once; each deals 70% damage.", false),
+            new ModifierData(ModifierType.PiercingCards, "Piercing Deck", "All cards pierce two extra targets, but deal 10% less damage.", false),
+            new ModifierData(ModifierType.Ricochet, "Ricochet", "Cards bounce to three nearby zombies.", false),
+            new ModifierData(ModifierType.ExplosiveFaceCards, "Royal Explosion", "Face cards cause a large 75%-damage explosion; cooldown is 15% longer.", false),
+            new ModifierData(ModifierType.ReturningCards, "Returning Cards", "Cards return after 0.45 seconds and no longer disappear when hitting walls.", false),
+            new ModifierData(ModifierType.SuitStreak, "Card Streak", "Each consecutive non-Joker card gains +10% damage, up to +50%. A Joker resets it.", false),
+            new ModifierData(ModifierType.ChaosDeck, "Chaos Deck", "Suit abilities are reassigned every round and every shuffle.", false),
+            new ModifierData(ModifierType.CursedDeck, "Cursed Deck", "+40% damage, but every fourth throw has a longer cooldown.", false),
             new ModifierData(ModifierType.JokersBargain, "Joker's Bargain", "Jokers remove 75% HP, but normal cards deal 15% less damage.", false)
         };
     }

@@ -179,9 +179,8 @@ public class ThrowingCard : MonoBehaviour
         }
 
         ResolveModifierManager();
-        int numberOfCards = 1 + (modifierManager != null ? modifierManager.ExtraCardsPerThrow : 0);
 
-        if (!forceSpecificCard && CardsRemaining < numberOfCards)
+        if (!forceSpecificCard && CardsRemaining <= 0)
         {
             StartShuffle();
             return false;
@@ -222,6 +221,10 @@ public class ThrowingCard : MonoBehaviour
     {
         ResolveModifierManager();
         int numberOfCards = 1 + (modifierManager != null ? modifierManager.ExtraCardsPerThrow : 0);
+        if (!forceSpecificCard)
+        {
+            numberOfCards = Mathf.Min(numberOfCards, CardsRemaining);
+        }
         Camera aimCamera = playerCamera != null ? playerCamera : Camera.main;
         Vector3 forward = aimCamera != null ? aimCamera.transform.forward : throwPoint.forward;
 
@@ -253,7 +256,9 @@ public class ThrowingCard : MonoBehaviour
                 }
             }
 
-            float horizontalAngle = (i - (numberOfCards - 1) * 0.5f) * 5f;
+            // Keep multi-card throws close enough that both cards can hit the
+            // same aimed target while still being visibly separate.
+            float horizontalAngle = (i - (numberOfCards - 1) * 0.5f) * 2f;
             Vector3 direction = Quaternion.AngleAxis(horizontalAngle, Vector3.up) * forward;
             CardProjectile projectile = CreateProjectile(direction);
             float finalForce = modifierManager != null
@@ -595,7 +600,9 @@ public class ThrowingCard : MonoBehaviour
             return;
         }
 
-        suitStreak = card.suit == lastSuit ? suitStreak + 1 : 1;
+        // Card Streak is deliberately deterministic so the reward can always
+        // be tested. Every non-Joker continues the streak; Jokers reset it.
+        suitStreak++;
         lastSuit = card.suit;
     }
 

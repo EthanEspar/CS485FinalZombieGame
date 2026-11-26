@@ -119,6 +119,13 @@ public class CardProjectile : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        // Multiple cards can be thrown from the same point. Ignore other card
+        // projectiles so Double Throw does not destroy its own second card.
+        if (other.GetComponentInParent<CardProjectile>() != null)
+        {
+            return;
+        }
+
         bool hitOwner = owner != null &&
             (other.transform == owner || other.transform.IsChildOf(owner));
 
@@ -135,7 +142,13 @@ public class CardProjectile : MonoBehaviour
         ICardDamageable target = FindDamageable(other);
         if (target == null)
         {
-            if (!returning)
+            if (!returning &&
+                modifierManager != null &&
+                modifierManager.UsesReturningCards)
+            {
+                returning = true;
+            }
+            else if (!returning)
             {
                 Destroy(gameObject);
             }
@@ -236,6 +249,8 @@ public class CardProjectile : MonoBehaviour
 
     private void Explode(ICardDamageable primaryTarget)
     {
+        CreateExplosionFlash();
+
         Collider[] colliders = Physics.OverlapSphere(
             transform.position,
             modifierManager.ExplosionRadius
@@ -259,6 +274,28 @@ public class CardProjectile : MonoBehaviour
 
             damageable.TakeDamage(damage * modifierManager.ExplosionDamageFraction);
         }
+    }
+
+    private void CreateExplosionFlash()
+    {
+        GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flash.name = "Royal Explosion";
+        flash.transform.position = transform.position;
+        flash.transform.localScale = Vector3.one * modifierManager.ExplosionRadius * 2f;
+
+        Collider flashCollider = flash.GetComponent<Collider>();
+        if (flashCollider != null)
+        {
+            Destroy(flashCollider);
+        }
+
+        Renderer flashRenderer = flash.GetComponent<Renderer>();
+        if (flashRenderer != null)
+        {
+            flashRenderer.material.color = new Color(1f, 0.35f, 0.05f, 0.35f);
+        }
+
+        Destroy(flash, 0.12f);
     }
 
     private ZombieHealth FindNearestZombie(float range)

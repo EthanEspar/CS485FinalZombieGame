@@ -8,7 +8,7 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private int maxAliveEnemies = 5;
     [SerializeField] private float respawnDelaySeconds = 5f;
     [SerializeField] private string spawnPointTag = "SpawnPoint";
-    [SerializeField] private float spawnHeightOffset = 0.5f;
+    [SerializeField] private float spawnHeightOffset = 0.02f;
 
     private readonly List<GameObject> activeEnemies = new List<GameObject>();
     private readonly Queue<float> scheduledRespawns = new Queue<float>();
@@ -141,6 +141,7 @@ public class EnemyController : MonoBehaviour
         Quaternion spawnRotation = spawnPoint.rotation;
 
         GameObject spawnedEnemy = Instantiate(prefabToSpawn, spawnPosition, spawnRotation);
+        PlaceEnemyOnGround(spawnedEnemy, spawnPosition.y);
         ConfigureZombieAi(spawnedEnemy);
         activeEnemies.Add(spawnedEnemy);
         enemySpawnIndices[spawnedEnemy] = spawnIndex;
@@ -197,7 +198,21 @@ public class EnemyController : MonoBehaviour
             position.y = spawnCollider.bounds.max.y;
         }
 
-        return position + Vector3.up * spawnHeightOffset;
+        return position;
+    }
+
+    private void PlaceEnemyOnGround(GameObject enemy, float groundHeight)
+    {
+        Collider enemyCollider = enemy.GetComponent<Collider>();
+        if (enemyCollider == null)
+        {
+            enemy.transform.position += Vector3.up * spawnHeightOffset;
+            return;
+        }
+
+        float desiredBottom = groundHeight + Mathf.Max(0f, spawnHeightOffset);
+        float verticalCorrection = desiredBottom - enemyCollider.bounds.min.y;
+        enemy.transform.position += Vector3.up * verticalCorrection;
     }
 
     private void ConfigureZombieAi(GameObject enemy)

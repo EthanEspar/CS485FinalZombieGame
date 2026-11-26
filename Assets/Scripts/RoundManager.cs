@@ -19,7 +19,7 @@ public class RoundManager : MonoBehaviour
     [Header("Zombie Spawning")]
     [SerializeField] private GameObject[] enemyPrefabs;
     [SerializeField] private string spawnPointTag = "SpawnPoint";
-    [SerializeField] private float spawnHeightOffset = 0.5f;
+    [SerializeField] private float spawnHeightOffset = 0.02f;
     [SerializeField] private int maxAliveEnemies = 3;
     [SerializeField] private float timeBetweenSpawns = 1f;
 
@@ -28,6 +28,10 @@ public class RoundManager : MonoBehaviour
     [SerializeField] private int extraEnemiesPerRound = 2;
     [SerializeField] private float timeBeforeNextRound = 1.5f;
     [SerializeField] private int modifierChoicesPerRound = 3;
+
+    [Header("Testing")]
+    [SerializeField] private bool allowForceUpgradeKey = true;
+    [SerializeField] private KeyCode forceUpgradeKey = KeyCode.U;
 
     private readonly List<ActiveEnemy> activeEnemies = new List<ActiveEnemy>();
     private readonly HashSet<int> occupiedSpawnIndices = new HashSet<int>();
@@ -105,6 +109,14 @@ public class RoundManager : MonoBehaviour
     {
         RemoveDefeatedEnemies();
 
+        if (allowForceUpgradeKey &&
+            !choosingModifier &&
+            Input.GetKeyDown(forceUpgradeKey))
+        {
+            ForceUpgradeForTesting();
+            return;
+        }
+
         if (!roundRunning || choosingModifier)
         {
             return;
@@ -155,6 +167,7 @@ public class RoundManager : MonoBehaviour
     private void StartNextRound()
     {
         currentRound++;
+        modifierManager?.OnRoundStarted();
         enemiesThisRound = startingEnemies +
             (currentRound - 1) * extraEnemiesPerRound;
         enemiesSpawned = 0;
@@ -195,8 +208,8 @@ public class RoundManager : MonoBehaviour
             spawnPosition.y = spawnCollider.bounds.max.y;
         }
 
-        spawnPosition += Vector3.up * spawnHeightOffset;
         GameObject enemy = Instantiate(prefab, spawnPosition, spawnPoint.rotation);
+        PlaceEnemyOnGround(enemy, spawnPosition.y);
         ConfigureZombieAi(enemy);
 
         activeEnemies.Add(new ActiveEnemy
@@ -206,6 +219,20 @@ public class RoundManager : MonoBehaviour
         });
         occupiedSpawnIndices.Add(spawnIndex);
         return true;
+    }
+
+    private void PlaceEnemyOnGround(GameObject enemy, float groundHeight)
+    {
+        Collider enemyCollider = enemy.GetComponent<Collider>();
+        if (enemyCollider == null)
+        {
+            enemy.transform.position += Vector3.up * spawnHeightOffset;
+            return;
+        }
+
+        float desiredBottom = groundHeight + Mathf.Max(0f, spawnHeightOffset);
+        float verticalCorrection = desiredBottom - enemyCollider.bounds.min.y;
+        enemy.transform.position += Vector3.up * verticalCorrection;
     }
 
     private Transform GetAvailableSpawnPoint(out int spawnIndex)
@@ -276,6 +303,37 @@ public class RoundManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         Debug.Log("Round " + currentRound + " cleared. Choose a modifier.");
+    }
+
+    [ContextMenu("Force Upgrade Choice (Play Mode)")]
+    public void ForceUpgradeForTesting()
+    {
+        if (!Application.isPlaying || choosingModifier)
+        {
+            return;
+        }
+
+        StopAllCoroutines();
+
+        if (currentRound <= 0)
+        {
+            currentRound = 1;
+            enemiesThisRound = startingEnemies;
+        }
+
+        for (int i = 0; i < activeEnemies.Count; i++)
+        {
+            if (activeEnemies[i].enemy != null)
+            {
+                Destroy(activeEnemies[i].enemy);
+            }
+        }
+
+        activeEnemies.Clear();
+        occupiedSpawnIndices.Clear();
+        enemiesSpawned = enemiesThisRound;
+        enemiesDefeated = enemiesThisRound;
+        FinishRound();
     }
 
     private void ChooseModifier(ModifierData choice)
